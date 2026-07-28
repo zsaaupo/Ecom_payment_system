@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledger &amp; Co. — Considered goods</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="wrap header-row">
+            <a href="index.html" class="brand">
+                <span class="brand-mark">§</span>
+                <span class="brand-name">Ledger<em>&amp;Co.</em></span>
+            </a>
+            <nav class="main-nav">
+                <div class="nav-dropdown">
+                    <button class="nav-link nav-dropdown-toggle" type="button">Categories</button>
+                    <div class="nav-dropdown-menu" id="nav-categories-menu"><span class="muted">Loading…</span></div>
+                </div>
+                <form class="nav-search" action="index.html" method="get">
+                    <input type="text" name="q" placeholder="Search the catalog…">
+                </form>
+            </nav>
+            <div class="header-actions">
+                <a href="cart.html" class="cart-link">Cart <span class="cart-badge" id="cart-badge">0</span></a>
+                <div id="auth-area"></div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="wrap">
+                <span class="hero-eyebrow">Ledger &amp; Co. — Reference storefront (decoupled frontend)</span>
+                <h1>Every order, accounted for.</h1>
+                <p class="lede">A small, well-kept catalog with transparent pricing, live stock, and checkout via Stripe or bKash — this build talks to the Django backend entirely over its REST API.</p>
+            </div>
+        </section>
+
+        <div class="wrap section">
+            <div class="filter-row" id="filter-row"></div>
+
+            <div class="section-head">
+                <h2 id="listing-title">All products</h2>
+                <span class="muted mono" id="listing-count"></span>
+            </div>
+
+            <div id="product-grid-container">
+                <div class="skeleton-grid">
+                    <div class="skeleton-card"></div><div class="skeleton-card"></div><div class="skeleton-card"></div>
+                </div>
+            </div>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="wrap footer-row">
+            <div><span class="brand-mark">§</span> Ledger&amp;Co. — decoupled frontend, hosted on Vercel.</div>
+            <div class="muted api-indicator">API: <span id="api-base-label"></span></div>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/cart.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/home.js"></script>
+</body>
+</html>
