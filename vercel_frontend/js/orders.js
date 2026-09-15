@@ -1,9 +1,9 @@
 // Ledger & Co. — orders list page.
 
-async function loadOrders() {
+async function loadOrders(page = 1) {
     const container = document.getElementById("orders-container");
     try {
-        const data = await Api.listOrders();
+        const data = await Api.listOrders(page);
         const orders = data.results ?? data;
 
         if (!orders.length) {
@@ -24,15 +24,22 @@ async function loadOrders() {
                         <div class="ledger-item-name mono">#${o.id}</div>
                         <span class="mono">${new Date(o.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
                         <span><span class="stamp ${o.status}">${o.status}</span></span>
-                        <span class="ledger-figure">${money(o.total_amount)}</span>
+                        <span class="ledger-figure">${money(o.total_amount, o.currency)}</span>
                     </a>`).join("")}
+            </div>
+            <div class="center" style="margin-top:24px;">
+                ${data.previous ? '<button class="btn btn-ghost" id="orders-prev">Previous</button>' : ''}
+                ${data.next ? '<button class="btn btn-ghost" id="orders-next">Next</button>' : ''}
             </div>`;
+        document.getElementById('orders-prev')?.addEventListener('click', () => loadOrders(page - 1));
+        document.getElementById('orders-next')?.addEventListener('click', () => loadOrders(page + 1));
     } catch (err) {
         container.innerHTML = `<div class="state-box">Could not load your orders.<br><span class="mono">${escapeHtml(friendlyError(err))}</span></div>`;
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     if (!Auth.requireAuth()) return;
     loadOrders();
 });

@@ -4,6 +4,8 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 
 from .models import Category, Product
 from .permissions import IsAdminOrReadOnly
@@ -66,7 +68,7 @@ class ProductViewSet(viewsets.ModelViewSet):
                 category_ids = CategoryService.get_descendant_ids_dfs(cat_id_int)
                 qs = qs.filter(category_id__in=category_ids)
             except (ValueError, TypeError):
-                qs = qs.filter(category_id=category_id)
+                raise ValidationError({'category': 'Enter a valid category ID.'})
         if search:
             qs = qs.filter(name__icontains=search)
         return qs
@@ -95,14 +97,17 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
-        ProductService.delete_product(instance)
+        try:
+            ProductService.delete_product(instance)
+        except ProtectedError:
+            return Response({'detail': 'This product belongs to an order. Set it inactive instead.'}, status=409)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=["get"])
     def related(self, request, pk=None):
         product = self.get_object()
         related = CategoryService.get_related_products(product)
-        return Response(ProductSerializer(related, many=True).data)
+        return Response(self.get_serializer(related, many=True).data)
 
 
 class CategoryTreeView(APIView):

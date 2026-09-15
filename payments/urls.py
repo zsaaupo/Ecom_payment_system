@@ -5,6 +5,7 @@ from . import views
 app_name = "payments_api"
 
 urlpatterns = [
+    path('config/', views.PaymentConfigView.as_view(), name='config'),
     path("initiate/", views.InitiatePaymentView.as_view(), name="initiate"),
     path("<int:pk>/", views.PaymentDetailView.as_view(), name="detail"),
     path("<int:pk>/confirm/", views.ConfirmPaymentView.as_view(), name="confirm"),

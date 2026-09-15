@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.utils.text import slugify
 
@@ -32,9 +33,24 @@ class Category(models.Model):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        seen = {self.pk} if self.pk else set()
+        current = self.parent
+        while current is not None:
+            if current.pk in seen:
+                raise ValidationError({'parent': 'A category cannot contain a cycle.'})
+            seen.add(current.pk)
+            current = current.parent
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            base = slugify(self.name) or 'category'
+            self.slug = base
+            suffix = 2
+            while Category.objects.exclude(pk=self.pk).filter(slug=self.slug).exists():
+                self.slug = f'{base}-{suffix}'
+                suffix += 1
         super().save(*args, **kwargs)
 
 
@@ -76,12 +92,16 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base = slugify(self.name)
-            self.slug = f"{base}-{self.sku}".lower()
+            base = slugify(f'{self.name}-{self.sku}')[:200] or 'product'
+            self.slug = base
+            suffix = 2
+            while Product.objects.exclude(pk=self.pk).filter(slug=self.slug).exists():
+                self.slug = f'{base}-{suffix}'
+                suffix += 1
         super().save(*args, **kwargs)
 
     def get_absolute_url(self):
-        return reverse("products:detail", kwargs={"slug": self.slug})
+        return reverse("products_api:product-detail", kwargs={"pk": self.pk})
 
     @property
     def is_available(self):

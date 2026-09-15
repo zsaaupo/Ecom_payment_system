@@ -24,4 +24,4 @@ EXPOSE 8000
 
 # collectstatic + migrate on boot, then serve with gunicorn (production-style,
 # also works fine for local `docker compose up`).
-CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 --workers 3"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && python manage.py collectstatic --noinput && gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000 --workers 3 --timeout 90"]

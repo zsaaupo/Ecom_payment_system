@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
             Auth.setSession(data.token, data.user);
             toast(`Welcome back, ${data.user.first_name || data.user.username}.`, "success");
             const next = qs("next");
-            window.location.href = next ? decodeURIComponent(next) : "index.html";
+            window.location.href = safeReturnPath(next);
         } catch (err) {
             toast(friendlyError(err), "error");
             submitBtn.disabled = false;

@@ -75,27 +75,23 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--admin-username", default="admin")
         parser.add_argument("--admin-email", default="admin@example.com")
-        parser.add_argument("--admin-password", default="AdminPass123!")
+        parser.add_argument("--admin-password", default=None, help='Optional initial admin password; otherwise use createsuperuser separately.')
 
     @transaction.atomic
     def handle(self, *args, **options):
-        self.stdout.write("Seeding admin user...")
-        admin_user, created = User.objects.get_or_create(
-            username=options["admin_username"],
-            defaults={
-                "email": options["admin_email"],
-                "is_staff": True,
-                "is_superuser": True,
-            },
-        )
-        if created:
-            admin_user.set_password(options["admin_password"])
-            admin_user.save()
-            self.stdout.write(self.style.SUCCESS(
-                f"  Created admin user '{admin_user.username}' / password '{options['admin_password']}'"
-            ))
+        if options['admin_password']:
+            admin_user, created = User.objects.get_or_create(
+                username=options['admin_username'],
+                defaults={'email': options['admin_email'], 'is_staff': True, 'is_superuser': True},
+            )
+            if created:
+                from django.contrib.auth.password_validation import validate_password
+                validate_password(options['admin_password'], user=admin_user)
+                admin_user.set_password(options['admin_password'])
+                admin_user.save()
+                self.stdout.write(self.style.SUCCESS(f"Created admin '{admin_user.username}'."))
         else:
-            self.stdout.write(f"  Admin user '{admin_user.username}' already exists, skipping.")
+            self.stdout.write('No admin password supplied; seeding catalog only.')
 
         self.stdout.write("Seeding category tree...")
         name_to_category = {}

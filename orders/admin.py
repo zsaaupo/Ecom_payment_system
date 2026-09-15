@@ -12,8 +12,14 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "status", "total_amount", "created_at")
-    list_filter = ("status",)
+    list_display = ("id", "user", "status", "total_amount", "currency", "stock_reserved", "needs_review", "created_at")
+    list_filter = ("status", "needs_review", "stock_reserved")
     search_fields = ("id", "user__username", "user__email")
     inlines = [OrderItemInline]
-    readonly_fields = ("total_amount", "created_at", "updated_at")
+    readonly_fields = ("user", "status", "total_amount", "currency", "stock_reserved", "created_at", "updated_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

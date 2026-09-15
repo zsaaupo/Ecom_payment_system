@@ -27,7 +27,7 @@ async function loadAccount() {
                         <div class="ledger-item-name mono">#${o.id}</div>
                         <span class="mono">${new Date(o.created_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}</span>
                         <span class="stamp ${o.status}">${o.status}</span>
-                        <span class="ledger-figure">${money(o.total_amount)}</span>
+                        <span class="ledger-figure">${money(o.total_amount, o.currency)}</span>
                     </a>`).join("")}
             </div>` : `<p class="muted">No orders yet.</p>`}`;
     } catch (err) {
@@ -35,7 +35,8 @@ async function loadAccount() {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     if (!Auth.requireAuth()) return;
     loadAccount();
 });

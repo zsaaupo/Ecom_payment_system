@@ -47,7 +47,7 @@ class ProductService:
     @staticmethod
     def update_product(product: Product, **fields):
         for key, value in fields.items():
-            if value is not None and hasattr(product, key):
+            if hasattr(product, key):
                 setattr(product, key, value)
         product.full_clean()
         product.save()
@@ -189,11 +189,11 @@ class CategoryService:
         in that branch.
         """
         if not product.category_id:
-            return Product.objects.filter(status=Product.Status.ACTIVE).exclude(pk=product.pk)[:limit]
+            return Product.objects.filter(status=Product.Status.ACTIVE, stock__gt=0).exclude(pk=product.pk)[:limit]
 
         category_ids = cls.get_descendant_ids_dfs(product.category_id)
         return (
-            Product.objects.filter(category_id__in=category_ids, status=Product.Status.ACTIVE)
+            Product.objects.filter(category_id__in=category_ids, status=Product.Status.ACTIVE, stock__gt=0)
             .exclude(pk=product.pk)
             .order_by("-created_at")[:limit]
         )

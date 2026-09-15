@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
@@ -33,6 +34,8 @@ class InitiatePaymentView(APIView):
             payment, provider_result = PaymentService.initiate_payment(order, serializer.validated_data["provider"])
         except PaymentProviderError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        except ValidationError as exc:
+            return Response({'detail': exc.messages}, status=400)
 
         data = PaymentSerializer(payment).data
         # surface provider-specific fields the client needs to complete payment
@@ -51,7 +54,10 @@ class ConfirmPaymentView(APIView):
         serializer = ConfirmPaymentSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         payload = serializer.validated_data
-        payment = PaymentService.confirm_payment(payment, payload)
+        try:
+            payment = PaymentService.confirm_payment(payment, payload)
+        except PaymentProviderError as exc:
+            return Response({'detail': str(exc)}, status=502)
         return Response(PaymentSerializer(payment).data)
 
 
@@ -114,7 +120,7 @@ class BkashCallbackView(APIView):
 
     def _is_browser(self, request):
         accept = request.META.get("HTTP_ACCEPT", "")
-        return request.method == "GET" and ("text/html" in accept or "application/xhtml+xml" in accept or "*/*" in accept)
+        return request.method == "GET" and ("text/html" in accept or "application/xhtml+xml" in accept)
 
     def _handle(self, request):
         from .strategies import BkashPaymentStrategy
@@ -127,7 +133,10 @@ class BkashCallbackView(APIView):
                 return redirect(f"{settings.FRONTEND_URL}/payment-bkash-return.html?status=failure")
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        payment = PaymentService.handle_bkash_event(event)
+        try:
+            payment = PaymentService.handle_bkash_event(event)
+        except PaymentProviderError as exc:
+            return Response({'detail': str(exc)}, status=502)
         if not payment:
             if self._is_browser(request):
                 return redirect(f"{settings.FRONTEND_URL}/payment-bkash-return.html?status=failure")
@@ -136,8 +145,10 @@ class BkashCallbackView(APIView):
         if self._is_browser(request):
             if payment.status == Payment.Status.SUCCESS:
                 target_url = f"{settings.FRONTEND_URL}/order.html?id={payment.order_id}"
-            else:
+            elif payment.status == Payment.Status.FAILED:
                 target_url = f"{settings.FRONTEND_URL}/order.html?id={payment.order_id}&payment=failed"
+            else:
+                target_url = f"{settings.FRONTEND_URL}/order.html?id={payment.order_id}&payment=pending"
             return redirect(target_url)
 
         return Response(PaymentSerializer(payment).data)
@@ -147,3 +158,20 @@ class BkashCallbackView(APIView):
 
     def post(self, request):
         return self._handle(request)
+
+
+class PaymentConfigView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        return Response({
+            'currency': settings.STORE_CURRENCY,
+            'providers': {
+                'stripe': bool(settings.STRIPE_SECRET_KEY and settings.STRIPE_PUBLISHABLE_KEY),
+                'bkash': settings.STORE_CURRENCY == 'BDT' and all([
+                    settings.BKASH_APP_KEY, settings.BKASH_APP_SECRET,
+                    settings.BKASH_USERNAME, settings.BKASH_PASSWORD,
+                ]),
+            },
+        })

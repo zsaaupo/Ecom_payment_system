@@ -19,14 +19,29 @@ function toast(message, type = "info", timeout = 4200) {
     setTimeout(() => el.remove(), timeout);
 }
 
-function money(amount) {
-    return `$${Number(amount).toFixed(2)}`;
+function money(amount, currency = window.STORE_CURRENCY || 'USD') {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(Number(amount));
 }
 
 function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str ?? "";
-    return div.innerHTML;
+    return String(str ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[char]));
+}
+
+function safeReturnPath(value) {
+    try {
+        const url = new URL(value || 'index.html', window.location.href);
+        if (url.origin === window.location.origin && /\/[^/]*\.html$/.test(url.pathname)) {
+            return url.pathname + url.search + url.hash;
+        }
+    } catch { /* use the catalog for invalid destinations */ }
+    return 'index.html';
+}
+
+function positiveId(name) {
+    const value = qs(name);
+    return /^[1-9]\d*$/.test(value || '') ? value : null;
 }
 
 function qs(name) {

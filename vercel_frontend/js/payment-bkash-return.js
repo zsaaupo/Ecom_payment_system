@@ -22,6 +22,10 @@ async function handleBkashReturn() {
                 <h2 class="center">Payment successful</h2>
                 <p class="center">Your bKash payment has been confirmed and your order is now paid.</p>
                 <div class="center"><a href="order.html?id=${payment.order}" class="btn btn-jade">View your order →</a></div>`;
+        } else if (payment.status === 'pending') {
+            container.innerHTML = `<h2 class="center">Payment awaiting confirmation</h2>
+                <p class="center">The provider has not confirmed a final outcome yet.</p>
+                <div class="center"><a href="order.html?id=${payment.order}" class="btn btn-ghost">Check your order status</a></div>`;
         } else {
             container.innerHTML = `
                 <h2 class="center">Payment not completed</h2>

@@ -2,11 +2,16 @@
 
 async function initStripeCheckout() {
     const container = document.getElementById("stripe-container");
-    const paymentId = qs("payment_id");
-    const orderId = qs("order_id");
+    const paymentId = positiveId("payment_id");
+    const orderId = positiveId("order_id");
 
     if (!paymentId || !orderId) {
         container.innerHTML = `<div class="state-box">Missing payment information.</div>`;
+        return;
+    }
+
+    if (qs('redirect_status')) {
+        await reconcileStripePayment(paymentId, orderId);
         return;
     }
 
@@ -19,7 +24,8 @@ async function initStripeCheckout() {
         return;
     }
 
-    const { client_secret, publishable_key, order_id } = JSON.parse(stored);
+    const { client_secret, publishable_key } = JSON.parse(stored);
+    const order_id = orderId;
 
     if (!publishable_key || !client_secret) {
         container.innerHTML = `
@@ -32,7 +38,7 @@ async function initStripeCheckout() {
     }
 
     let orderTotal = "";
-    try { orderTotal = money((await Api.getOrder(order_id)).total_amount); } catch (e) { /* non-critical */ }
+    try { const order = await Api.getOrder(order_id); orderTotal = money(order.total_amount, order.currency); } catch (e) { /* non-critical */ }
 
     container.innerHTML = `
         <h2 class="center">Pay with Stripe</h2>
@@ -52,6 +58,7 @@ async function initStripeCheckout() {
         const msg = document.getElementById("payment-message");
         msg.textContent = "";
 
+        try {
         const { error } = await stripe.confirmPayment({
             elements,
             confirmParams: { return_url: window.location.href },
@@ -65,18 +72,32 @@ async function initStripeCheckout() {
             return;
         }
 
-        try {
-            await Api.confirmPayment(paymentId);
-            sessionStorage.removeItem(`ledgerco_payment_${paymentId}`);
-            toast("Payment successful! Your order is confirmed.", "success");
+        await reconcileStripePayment(paymentId, order_id);
         } catch (err) {
-            toast("Payment went through, but we couldn't reconcile it automatically. Check your order status.", "error");
+            msg.textContent = 'We could not verify payment. Check your order status before retrying.';
+            btn.disabled = false;
+            btn.textContent = `Pay ${orderTotal}`;
         }
-        window.location.href = `order.html?id=${order_id}`;
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+async function reconcileStripePayment(paymentId, orderId) {
+    const payment = await Api.confirmPayment(paymentId);
+    const messages = {
+        success: 'Payment successful. Your order is confirmed.',
+        pending: 'Payment is awaiting confirmation. Check your order for updates.',
+        failed: 'Payment was not completed. Check your order for details.',
+    };
+    if (payment.status === 'success') sessionStorage.removeItem(`ledgerco_payment_${paymentId}`);
+    document.getElementById('stripe-container').innerHTML = `<h2 class="center">${messages[payment.status] || 'Check your payment status.'}</h2>
+        <div class="center"><a class="btn btn-jade" href="order.html?id=${orderId}">View your order</a></div>`;
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     if (!Auth.requireAuth()) return;
-    initStripeCheckout();
+    try { await initStripeCheckout(); }
+    catch (error) {
+        document.getElementById('stripe-container').innerHTML = `<div class="state-box">Payment could not be loaded. ${escapeHtml(friendlyError(error))}<br><a href="orders.html">View your orders</a></div>`;
+    }
 });

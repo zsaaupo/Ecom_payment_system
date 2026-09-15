@@ -18,7 +18,7 @@ async function loadOrder() {
 
 function renderOrder(order) {
     const container = document.getElementById("order-container");
-    const payment = order.payments && order.payments.length ? order.payments[order.payments.length - 1] : null;
+    const payment = order.payments?.[0] || null;
     const placedAt = new Date(order.created_at);
 
     container.innerHTML = `
@@ -34,14 +34,14 @@ function renderOrder(order) {
                 <div class="ledger-row" style="grid-template-columns: 1fr auto auto; padding: 10px 0; border-bottom: 1px dashed var(--rule);">
                     <div>
                         <div class="ledger-item-name">${escapeHtml(item.product.name)}</div>
-                        <div class="ledger-item-meta">${item.quantity} × ${money(item.price)}</div>
+                        <div class="ledger-item-meta">${item.quantity} × ${money(item.price, order.currency)}</div>
                     </div>
                     <span></span>
-                    <span class="ledger-figure">${money(item.subtotal)}</span>
+                    <span class="ledger-figure">${money(item.subtotal, order.currency)}</span>
                 </div>`).join("")}
             <div class="ledger-total-row" style="margin: 16px -28px -32px; border-radius: 0 0 var(--radius-lg) var(--radius-lg);">
                 <span>Total</span>
-                <span class="mono">${money(order.total_amount)}</span>
+                <span class="mono">${money(order.total_amount, order.currency)}</span>
             </div>
         </div>
     </div>
@@ -66,9 +66,30 @@ function renderOrder(order) {
         <p class="muted">This order hasn't been paid yet.</p>
         <a href="index.html" class="btn btn-ghost">Back to catalog</a>
     </div>` : ""}`;
+    if (order.needs_review) {
+        container.insertAdjacentHTML('beforeend', '<p class="center">Payment received. Please contact the store about fulfillment of this order.</p>');
+    }
+    if (order.status === 'pending') {
+        const providers = payment ? [payment.provider] : Object.keys(window.PAYMENT_PROVIDERS).filter(p => window.PAYMENT_PROVIDERS[p]);
+        container.insertAdjacentHTML('beforeend', `<div class="center" style="margin-top:24px;">
+            ${providers.map(p => `<button class="btn btn-jade" data-resume="${escapeHtml(p)}">Continue with ${escapeHtml(p)}</button>`).join(' ')}
+            ${payment ? '<button class="btn btn-ghost" id="refresh-payment">Check payment status</button>' : ''}
+        </div>`);
+        container.querySelectorAll('[data-resume]').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try { await continueToPayment(order, button.dataset.resume); }
+            catch (error) { toast(friendlyError(error), 'error'); button.disabled = false; }
+        }));
+        document.getElementById('refresh-payment')?.addEventListener('click', async function () {
+            this.disabled = true;
+            try { await Api.queryPayment(payment.id); await loadOrder(); }
+            catch (error) { toast(friendlyError(error), 'error'); this.disabled = false; }
+        });
+    }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     if (!Auth.requireAuth()) return;
     loadOrder();
 });

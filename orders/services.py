@@ -97,11 +97,16 @@ class OrderService:
         """
         if cart.is_empty():
             raise ValidationError("Cannot create an order from an empty cart.")
+        lines = list(cart.items())
+        if len(lines) != len(cart._data):
+            raise ValidationError('One or more cart products no longer exist.')
 
         order = Order.objects.create(user=user, total_amount=Decimal("0.00"), status=Order.Status.PENDING)
         total = Decimal("0.00")
 
-        for product, quantity in cart.items():
+        for product, quantity in lines:
+            if not isinstance(quantity, int) or quantity <= 0:
+                raise ValidationError('Quantity must be a positive integer.')
             if not product.is_available:
                 raise ValidationError(f"'{product.name}' is not currently available.")
             if product.stock < quantity:
@@ -114,6 +119,8 @@ class OrderService:
                 price=unit_price, subtotal=subtotal,
             )
             total += subtotal
+            if total > Decimal('9999999999.99'):
+                raise ValidationError('Order total exceeds the supported maximum.')
 
         order.total_amount = total
         order.save(update_fields=["total_amount"])

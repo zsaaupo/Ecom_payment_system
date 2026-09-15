@@ -7,6 +7,7 @@ logic independently from views and serializers.
 import logging
 
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
@@ -43,6 +44,7 @@ class UserService:
             last_name=last_name,
             phone_number=phone_number,
         )
+        validate_password(password, user=user)
         user.set_password(password)
 
         try:

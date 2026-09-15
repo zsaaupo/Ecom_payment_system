@@ -62,4 +62,4 @@ function renderCartPage() {
     });
 }
 
-document.addEventListener("DOMContentLoaded", renderCartPage);
+document.addEventListener("DOMContentLoaded", async () => { await window.StoreReady; renderCartPage(); });

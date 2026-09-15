@@ -1,5 +1,9 @@
 .git
 .gitignore
+.env
+.venv/
+qa/
+.github/
 venv/
 env/
 __pycache__/

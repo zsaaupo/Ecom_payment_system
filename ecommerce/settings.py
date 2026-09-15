@@ -84,6 +84,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -127,6 +128,7 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DB_DIR / "db.sqlite3",
+        "OPTIONS": {"transaction_mode": "IMMEDIATE", "timeout": 60},
     }
 }
 
@@ -158,10 +160,10 @@ USE_TZ = True
 # ---------------------------------------------------------------------------
 # Static & media
 # ---------------------------------------------------------------------------
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -172,8 +174,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ---------------------------------------------------------------------------
 from corsheaders.defaults import default_headers
 
-CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", True)
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_ALL_ORIGINS = env_bool("CORS_ALLOW_ALL_ORIGINS", DEBUG)
+CORS_ALLOWED_ORIGINS = [o.strip() for o in env('CORS_ALLOWED_ORIGINS', '').split(',') if o.strip()]
+CORS_ALLOW_CREDENTIALS = False
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "ngrok-skip-browser-warning",
 ]
@@ -233,6 +236,11 @@ STRIPE_SECRET_KEY = env("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = env("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET = env("STRIPE_WEBHOOK_SECRET", "")
 
+# Catalog prices use one currency. Existing catalog prices were displayed in USD.
+STORE_CURRENCY = env("STORE_CURRENCY", "USD").upper()
+if STORE_CURRENCY not in ("USD", "BDT"):
+    raise ValueError("STORE_CURRENCY must be USD or BDT.")
+
 BKASH_BASE_URL = env("BKASH_BASE_URL", "https://tokenized.sandbox.bka.sh/v1.2.0-beta")
 BKASH_APP_KEY = env("BKASH_APP_KEY", "")
 BKASH_APP_SECRET = env("BKASH_APP_SECRET", "")
@@ -240,7 +248,7 @@ BKASH_USERNAME = env("BKASH_USERNAME", "")
 BKASH_PASSWORD = env("BKASH_PASSWORD", "")
 BKASH_CALLBACK_URL = env("BKASH_CALLBACK_URL", "http://localhost:8000/api/payments/webhooks/bkash/")
 
-FRONTEND_URL = env("FRONTEND_URL", "https://vercelfrontend-delta.vercel.app").rstrip("/")
+FRONTEND_URL = env("FRONTEND_URL", "http://localhost:8080").rstrip("/")
 
 
 # ---------------------------------------------------------------------------

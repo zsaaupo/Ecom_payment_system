@@ -9,25 +9,39 @@ const CART_KEY = "ledgerco_cart"; // { [productId]: { product: {...snapshot...},
 
 const Cart = {
     _read() {
-        try { return JSON.parse(localStorage.getItem(CART_KEY)) || {}; }
-        catch { return {}; }
+        try {
+            const data = JSON.parse(localStorage.getItem(CART_KEY));
+            if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+            return Object.fromEntries(Object.entries(data).filter(([id, line]) =>
+                /^[1-9]\d*$/.test(id) && line && line.product &&
+                String(line.product.id) === id && Number.isInteger(line.quantity) && line.quantity > 0 &&
+                Number.isInteger(line.product.stock) && line.product.stock >= line.quantity &&
+                Number.isFinite(Number(line.product.price)) && Number(line.product.price) >= 0
+            ));
+        } catch { return {}; }
     },
     _write(data) {
         localStorage.setItem(CART_KEY, JSON.stringify(data));
         window.dispatchEvent(new CustomEvent("cart:updated"));
     },
     add(product, quantity = 1) {
+        quantity = Number(quantity);
+        if (!Number.isInteger(quantity) || quantity < 1 || !Number.isInteger(product.stock) || product.stock < 1) return 0;
         const data = this._read();
         const key = String(product.id);
         const existingQty = data[key] ? data[key].quantity : 0;
-        data[key] = { product, quantity: existingQty + quantity };
+        const newQty = Math.min(product.stock, existingQty + quantity);
+        data[key] = { product, quantity: newQty };
         this._write(data);
+        return Math.max(0, newQty - existingQty);
     },
     setQuantity(productId, quantity) {
+        quantity = Number(quantity);
+        if (!Number.isInteger(quantity)) return;
         const data = this._read();
         const key = String(productId);
         if (quantity <= 0) { delete data[key]; }
-        else if (data[key]) { data[key].quantity = quantity; }
+        else if (data[key]) { data[key].quantity = Math.min(data[key].product.stock, quantity); }
         this._write(data);
     },
     remove(productId) {
@@ -46,7 +60,7 @@ const Cart = {
         return Object.values(this._read()).reduce((sum, l) => sum + l.quantity, 0);
     },
     total() {
-        return this.lines().reduce((sum, l) => sum + l.subtotal, 0);
+        return this.lines().reduce((sum, l) => sum + Math.round(l.subtotal * 100), 0) / 100;
     },
     isEmpty() { return Object.keys(this._read()).length === 0; },
     /** Payload shape the backend's POST /api/orders/ expects. */

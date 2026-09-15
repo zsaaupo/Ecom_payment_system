@@ -11,7 +11,6 @@ Architecture:
 """
 import abc
 import logging
-import uuid
 
 import requests
 import stripe
@@ -49,7 +48,7 @@ class PaymentStrategy(abc.ABC):
 
     def query(self, transaction_id):
         """Optional: query current status from the provider. Default: not supported."""
-        raise NotImplementedError(f"{self.name} does not support status queries.")
+        raise PaymentProviderError(f"{self.name} does not support status queries.")
 
     def verify_webhook(self, request):
         """Optional: verify an inbound webhook/callback. Returns parsed event dict."""
@@ -69,14 +68,15 @@ class StripePaymentStrategy(PaymentStrategy):
 
     def initiate(self, order):
         """Create a PaymentIntent and return client details for checkout."""
-        if not settings.STRIPE_SECRET_KEY:
+        if not settings.STRIPE_SECRET_KEY or not settings.STRIPE_PUBLISHABLE_KEY:
             raise PaymentProviderError(
                 "Stripe is not configured. Set STRIPE_SECRET_KEY in your .env file."
             )
         try:
             intent = stripe.PaymentIntent.create(
                 amount=int(order.total_amount * 100),  # Stripe uses the smallest currency unit
-                currency="usd",
+                currency=order.currency.lower(),
+                idempotency_key=f'order-{order.pk}-stripe',
                 metadata={"order_id": str(order.id)},
                 automatic_payment_methods={"enabled": True},
             )
@@ -102,7 +102,7 @@ class StripePaymentStrategy(PaymentStrategy):
         status_map = {
             "succeeded": "success",
             "processing": "pending",
-            "requires_payment_method": "failed",
+            "requires_payment_method": "pending",
             "requires_action": "pending",
             "canceled": "failed",
         }
@@ -110,6 +110,9 @@ class StripePaymentStrategy(PaymentStrategy):
             "status": status_map.get(intent.status, "pending"),
             "raw_response": intent.to_dict() if hasattr(intent, "to_dict") else dict(intent),
         }
+
+    def query(self, transaction_id):
+        return self.confirm(transaction_id)
 
     def verify_webhook(self, request):
         """
@@ -159,9 +162,12 @@ class BkashPaymentStrategy(PaymentStrategy):
             "password": self.password,
         }
         body = {"app_key": self.app_key, "app_secret": self.app_secret}
-        response = requests.post(url, json=body, headers=headers, timeout=15)
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.post(url, json=body, headers=headers, timeout=15)
+            response.raise_for_status()
+            data = response.json()
+        except (requests.RequestException, ValueError) as exc:
+            raise PaymentProviderError('bKash authentication is temporarily unavailable.') from exc
         if "id_token" not in data:
             raise PaymentProviderError(f"bKash token grant failed: {data}")
         return data["id_token"]
@@ -176,6 +182,8 @@ class BkashPaymentStrategy(PaymentStrategy):
 
     def initiate(self, order):
         """Create a bKash tokenized payment session."""
+        if order.currency != 'BDT':
+            raise PaymentProviderError('bKash requires an order priced in BDT.')
         id_token = self._grant_token()
         url = f"{self.base_url}/tokenized/checkout/create"
         body = {
@@ -191,11 +199,11 @@ class BkashPaymentStrategy(PaymentStrategy):
             response = requests.post(url, json=body, headers=self._auth_headers(id_token), timeout=15)
             response.raise_for_status()
             data = response.json()
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError) as exc:
             raise PaymentProviderError(f"bKash create-payment request failed: {exc}") from exc
 
         payment_id = data.get("paymentID")
-        if not payment_id:
+        if not payment_id or not data.get('bkashURL') or str(data.get('statusCode', '0000')) != '0000':
             raise PaymentProviderError(f"bKash did not return a paymentID: {data}")
 
         return {
@@ -215,17 +223,17 @@ class BkashPaymentStrategy(PaymentStrategy):
             )
             response.raise_for_status()
             data = response.json()
-        except requests.RequestException as exc:
-            raise PaymentProviderError(f"bKash execute-payment request failed: {exc}") from exc
+        except (requests.RequestException, ValueError):
+            return self.query(transaction_id)
 
         status_code = str(data.get("statusCode", ""))
         trx_status = data.get("transactionStatus")
 
         if status_code == "0000" and trx_status == "Completed":
             res_status = "success"
-        elif status_code in ("2029", "2062") and (trx_status == "Completed" or "trxID" in data):
-            res_status = "success"
-        elif trx_status in ("Failed", "Cancelled") or (status_code != "" and status_code != "0000"):
+        elif status_code != '0000':
+            return self.query(transaction_id)
+        elif trx_status in ("Failed", "Cancelled", "Canceled"):
             res_status = "failed"
         else:
             res_status = "pending"
@@ -245,7 +253,7 @@ class BkashPaymentStrategy(PaymentStrategy):
             )
             response.raise_for_status()
             data = response.json()
-        except requests.RequestException as exc:
+        except (requests.RequestException, ValueError) as exc:
             raise PaymentProviderError(f"bKash query-payment request failed: {exc}") from exc
 
         status_code = str(data.get("statusCode", ""))
@@ -253,7 +261,9 @@ class BkashPaymentStrategy(PaymentStrategy):
 
         if status_code == "0000" and trx_status == "Completed":
             res_status = "success"
-        elif trx_status in ("Failed", "Cancelled") or (status_code != "" and status_code != "0000"):
+        elif status_code not in ('', '0000'):
+            raise PaymentProviderError('bKash could not verify the payment status. Please retry.')
+        elif trx_status in ("Failed", "Cancelled", "Canceled", "Expired"):
             res_status = "failed"
         else:
             res_status = "pending"
@@ -268,6 +278,8 @@ class BkashPaymentStrategy(PaymentStrategy):
         Parses and verifies an inbound bKash callback or IPN webhook payload.
         Expects query parameters or JSON body containing 'paymentID' and 'status'.
         """
+        if request.method == 'POST' and not hasattr(request.data, 'get'):
+            raise PaymentProviderError('Expected an object containing paymentID and status.')
         payment_id = request.GET.get("paymentID") or (
             request.data.get("paymentID") if hasattr(request, "data") and request.data else None
         )

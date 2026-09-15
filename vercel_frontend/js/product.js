@@ -55,8 +55,8 @@ function renderProduct(p) {
         document.getElementById("qty-plus").addEventListener("click", () => { qtyInput.value = Math.min(p.stock, parseInt(qtyInput.value || "1", 10) + 1); });
         document.getElementById("add-to-cart-btn").addEventListener("click", () => {
             const qty = Math.max(1, parseInt(qtyInput.value || "1", 10));
-            Cart.add({ id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock }, qty);
-            toast(`Added ${qty} × ${p.name} to your cart.`, "success");
+            const added = Cart.add({ id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock }, qty);
+            toast(added ? `Added ${added} × ${p.name} to your cart.` : 'Your cart already contains all available stock.', added ? 'success' : 'info');
         });
     }
 }
@@ -82,4 +82,4 @@ function renderRelated(related) {
         </div>`;
 }
 
-document.addEventListener("DOMContentLoaded", loadProduct);
+document.addEventListener("DOMContentLoaded", async () => { await window.StoreReady; loadProduct(); });

@@ -137,7 +137,7 @@ class StripeWebhookTests(TestCase):
         self.assertEqual(self.order.status, Order.Status.PAID)
 
     @patch("payments.strategies.StripePaymentStrategy.verify_webhook")
-    def test_webhook_failed_event_cancels_order(self, mock_verify):
+    def test_webhook_declined_attempt_keeps_order_retryable(self, mock_verify):
         mock_verify.return_value = {
             "type": "payment_intent.payment_failed",
             "data": {"object": {"id": "pi_webhook_1"}},
@@ -150,7 +150,7 @@ class StripeWebhookTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.order.refresh_from_db()
-        self.assertEqual(self.order.status, Order.Status.CANCELED)
+        self.assertEqual(self.order.status, Order.Status.PENDING)
 
 
 class BkashCallbackTests(TestCase):
@@ -173,7 +173,8 @@ class BkashCallbackTests(TestCase):
         response = client.get("/api/payments/webhooks/bkash/")
         self.assertEqual(response.status_code, 400)
 
-    def test_callback_cancel_status_marks_payment_failed(self):
+    @patch.object(BkashPaymentStrategy, 'query', return_value={'status': 'failed'})
+    def test_callback_verified_cancel_marks_payment_failed(self, mock_query):
         client = APIClient()
         response = client.get("/api/payments/webhooks/bkash/?paymentID=bkash_pay_1&status=cancel")
         self.assertEqual(response.status_code, 200)

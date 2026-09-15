@@ -4,6 +4,16 @@ from .models import Category, Product
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    def validate_parent(self, parent):
+        visited = {self.instance.pk} if self.instance else set()
+        current = parent
+        while current is not None:
+            if current.pk in visited:
+                raise serializers.ValidationError('A category cannot contain a cycle.')
+            visited.add(current.pk)
+            current = current.parent
+        return parent
+
     class Meta:
         model = Category
         fields = ["id", "name", "slug", "parent"]

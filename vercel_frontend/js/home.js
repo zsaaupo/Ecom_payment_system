@@ -36,8 +36,8 @@ function renderProducts(data) {
         btn.addEventListener("click", (e) => {
             e.preventDefault();
             const product = JSON.parse(btn.getAttribute("data-product"));
-            Cart.add(product, 1);
-            toast(`Added ${product.name} to your cart.`, "success");
+            const added = Cart.add(product, 1);
+            toast(added ? `Added ${product.name} to your cart.` : 'Your cart already contains all available stock.', added ? 'success' : 'info');
         });
     });
 
@@ -46,7 +46,7 @@ function renderProducts(data) {
 
 function productCard(p) {
     const available = p.is_available;
-    const productSnapshot = JSON.stringify({ id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock }).replace(/'/g, "&apos;");
+    const productSnapshot = escapeHtml(JSON.stringify({ id: p.id, name: p.name, sku: p.sku, price: p.price, stock: p.stock }));
     return `
     <div class="product-card">
         <a href="product.html?id=${p.id}" style="color:inherit;">
@@ -103,7 +103,8 @@ function renderPagination(data) {
     });
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     const searchInput = document.querySelector(".nav-search input");
     if (searchInput && qs("q")) searchInput.value = qs("q");
 

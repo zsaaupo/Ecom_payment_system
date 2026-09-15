@@ -49,45 +49,44 @@ function renderCheckout() {
 
     container.querySelectorAll(".provider-option").forEach((option) => {
         option.addEventListener("click", () => {
-            option.querySelector("input").checked = true;
+            const input = option.querySelector('input');
+            if (input.disabled) return;
+            input.checked = true;
             container.querySelectorAll(".provider-option").forEach((o) => o.classList.toggle("selected", o === option));
         });
     });
 
     document.getElementById("checkout-form").addEventListener("submit", handleCheckoutSubmit);
+    container.querySelectorAll('input[name="provider"]').forEach(input => {
+        input.disabled = !window.PAYMENT_PROVIDERS[input.value];
+        if (input.disabled) input.closest('.provider-option').querySelector('.provider-desc').textContent = 'Currently unavailable';
+    });
+    if (!Object.values(window.PAYMENT_PROVIDERS).some(Boolean)) {
+        document.getElementById('place-order-btn').disabled = true;
+        toast('Online payment is currently unavailable. Your cart has been saved.', 'info');
+    }
 }
 
 async function handleCheckoutSubmit(e) {
     e.preventDefault();
     const provider = e.target.querySelector('input[name="provider"]:checked')?.value;
-    if (!provider) { toast("Please choose a payment method.", "error"); return; }
+    if (!provider || !window.PAYMENT_PROVIDERS[provider]) { toast("Please choose an available payment method.", "error"); return; }
 
     const btn = document.getElementById("place-order-btn");
     btn.disabled = true;
     btn.textContent = "Placing order…";
 
     try {
-        const order = await Api.createOrder(Cart.toOrderItems());
-        const payment = await Api.initiatePayment(order.id, provider);
-        Cart.clear();
-
-        if (provider === "stripe") {
-            sessionStorage.setItem(`ledgerco_payment_${payment.id}`, JSON.stringify({
-                client_secret: payment.client_secret,
-                publishable_key: payment.publishable_key,
-                order_id: order.id,
-            }));
-            window.location.href = `payment-stripe.html?payment_id=${payment.id}&order_id=${order.id}`;
-        } else {
-            if (!payment.bkash_url) {
-                toast("bKash did not return a checkout URL.", "error");
-                btn.disabled = false;
-                btn.textContent = "Place order & continue to payment →";
-                return;
-            }
-            sessionStorage.setItem(`ledgerco_bkash_${order.id}`, payment.bkash_url);
-            window.location.href = `payment-bkash.html?order_id=${order.id}`;
+        const items = Cart.toOrderItems();
+        const key = `ledgerco_checkout_${Auth.getUser()?.id}_${JSON.stringify(items)}`;
+        const saved = sessionStorage.getItem(key);
+        let order = saved ? await Api.getOrder(saved) : null;
+        if (!order || order.status !== 'pending') {
+            order = await Api.createOrder(items);
+            sessionStorage.setItem(key, String(order.id));
         }
+        await continueToPayment(order, provider, true);
+        sessionStorage.removeItem(key);
     } catch (err) {
         toast(friendlyError(err), "error");
         btn.disabled = false;
@@ -95,7 +94,8 @@ async function handleCheckoutSubmit(e) {
     }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await window.StoreReady;
     if (!Auth.requireAuth()) return;
     renderCheckout();
 });

@@ -2,6 +2,10 @@ from django.conf import settings
 from django.db import models
 
 
+def default_currency():
+    return settings.STORE_CURRENCY
+
+
 class Order(models.Model):
     """
     Requirement (2.1.3 Order Management):
@@ -15,6 +19,9 @@ class Order(models.Model):
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name="orders", on_delete=models.CASCADE)
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    currency = models.CharField(max_length=3, default=default_currency)
+    stock_reserved = models.BooleanField(default=False)
+    needs_review = models.BooleanField(default=False, help_text='Payment succeeded but fulfillment needs manual review.')
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

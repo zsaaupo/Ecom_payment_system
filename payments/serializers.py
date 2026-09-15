@@ -4,9 +4,10 @@ from .models import Payment
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+    currency = serializers.CharField(source='order.currency', read_only=True)
     class Meta:
         model = Payment
-        fields = ["id", "order", "provider", "transaction_id", "status", "amount", "created_at", "updated_at"]
+        fields = ["id", "order", "provider", "transaction_id", "status", "amount", "currency", "created_at", "updated_at"]
         read_only_fields = fields
 
 

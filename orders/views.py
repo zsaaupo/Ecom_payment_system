@@ -5,6 +5,7 @@ from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 
 from products.models import Product
 
@@ -24,7 +25,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     http_method_names = ["get", "post", "head", "options"]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).prefetch_related("items__product")
+        return Order.objects.filter(user=self.request.user).prefetch_related("items__product", "payments")
 
     @transaction.atomic
     def create(self, request, *args, **kwargs):
@@ -46,10 +47,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                     price=product.price, subtotal=subtotal,
                 )
                 total += subtotal
+                if total > Decimal('9999999999.99'):
+                    raise DjangoValidationError('Order total exceeds the supported maximum.')
         except Product.DoesNotExist:
-            return Response({"detail": "One or more products do not exist."}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({"detail": "One or more products do not exist."})
         except DjangoValidationError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            raise ValidationError({"detail": exc.messages})
 
         order.total_amount = total
         order.save(update_fields=["total_amount"])
