@@ -10,6 +10,7 @@ Architecture:
       in STRATEGY_REGISTRY.
 """
 import abc
+import hashlib
 import logging
 
 import requests
@@ -73,10 +74,12 @@ class StripePaymentStrategy(PaymentStrategy):
                 "Stripe is not configured. Set STRIPE_SECRET_KEY in your .env file."
             )
         try:
+            env_salt = hashlib.md5(settings.SECRET_KEY.encode("utf-8")).hexdigest()[:8]
+            idempotency_key = f"order-{env_salt}-{order.pk}-{order.currency.lower()}-{int(order.total_amount * 100)}"
             intent = stripe.PaymentIntent.create(
                 amount=int(order.total_amount * 100),  # Stripe uses the smallest currency unit
                 currency=order.currency.lower(),
-                idempotency_key=f'order-{order.pk}-stripe',
+                idempotency_key=idempotency_key,
                 metadata={"order_id": str(order.id)},
                 automatic_payment_methods={"enabled": True},
             )

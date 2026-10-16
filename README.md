@@ -1,22 +1,99 @@
 # Ledger & Co. — E-Commerce Ordering & Multi-Provider Payment System
 
+> 🚀 **Live URL:** [https://paymentsystem.pythonanywhere.com/](https://paymentsystem.pythonanywhere.com/)
+
 A production-ready Django REST Framework backend with an integrated HTML5/CSS3/Vanilla JavaScript storefront served directly via Django's template engine and static asset pipeline. The system implements a robust ordering pipeline, concurrency-safe inventory reservation, hierarchical product categorization (DFS + Caching), and a multi-provider payment architecture using the **Strategy Pattern** supporting **Stripe** and **bKash Tokenized Checkout**.
 
 ---
 
 ## Table of Contents
-1. [System Architecture & Design Patterns](#system-architecture--design-patterns)
-2. [Key Features](#key-features)
-3. [Sandbox Payment Test Credentials](#sandbox-payment-test-credentials)
+1. [Live Demo & Quick Testing Guide](#-live-demo--quick-testing-guide)
+2. [Sandbox Payment Test Credentials](#sandbox-payment-test-credentials)
    - [bKash Sandbox Test Wallets](#bkash-sandbox-test-wallets)
    - [Stripe Sandbox Test Cards](#stripe-sandbox-test-cards)
-4. [Environment Configuration (.env)](#environment-configuration-env)
-5. [Local Development Setup](#local-development-setup)
-6. [Docker Deployment](#docker-deployment)
-7. [PythonAnywhere Production Deployment](#pythonanywhere-production-deployment)
-8. [REST API Reference](#rest-api-reference)
-9. [Testing, QA & Concurrency Verification](#testing-qa--concurrency-verification)
-10. [Scheduled Jobs & Payment Reconciliation](#scheduled-jobs--payment-reconciliation)
+3. [System Architecture & Design Patterns](#system-architecture--design-patterns)
+4. [Key Features](#key-features)
+5. [Environment Configuration (.env)](#environment-configuration-env)
+6. [Local Development Setup](#local-development-setup)
+7. [Docker Deployment](#docker-deployment)
+8. [PythonAnywhere Production Deployment](#pythonanywhere-production-deployment)
+9. [REST API Reference](#rest-api-reference)
+10. [Testing, QA & Concurrency Verification](#testing-qa--concurrency-verification)
+11. [Scheduled Jobs & Payment Reconciliation](#scheduled-jobs--payment-reconciliation)
+
+---
+
+## 🌐 Live Demo & Quick Testing Guide
+
+You can test the complete end-to-end purchasing and payment flow directly on the live server:
+
+1. **Visit the Live Storefront**: Open [https://paymentsystem.pythonanywhere.com/](https://paymentsystem.pythonanywhere.com/)
+2. **Account Sign In / Register**:
+   - Register a new customer account at [Register](https://paymentsystem.pythonanywhere.com/register.html) or sign in at [Login](https://paymentsystem.pythonanywhere.com/login.html).
+3. **Add Items to Cart**:
+   - Browse catalog products, view details, and click **Add to Cart**.
+4. **Proceed to Checkout**:
+   - Open [Cart](https://paymentsystem.pythonanywhere.com/cart.html) or go directly to [Checkout](https://paymentsystem.pythonanywhere.com/checkout.html).
+5. **Select Payment Gateway**:
+   - Choose either **bKash** or **Stripe** and use the bound test credentials below.
+
+---
+
+## Sandbox Payment Test Credentials
+
+### bKash Sandbox Test Wallets
+
+The live deployment at [paymentsystem.pythonanywhere.com](https://paymentsystem.pythonanywhere.com/) is configured with `STORE_CURRENCY=BDT` and connects to the official bKash Tokenized Checkout sandbox.
+
+| Field | Sandbox Test Value |
+| --- | --- |
+| **Active Live Demo** | [https://paymentsystem.pythonanywhere.com/](https://paymentsystem.pythonanywhere.com/) |
+| **Sandbox Gateway URL** | `https://tokenized.sandbox.bka.sh/v1.2.0-beta` |
+| **Verification Code (OTP)** | **`123456`** |
+| **PIN** | **`12121`** |
+
+#### Approved Sandbox Test Wallet Numbers
+Use any of the following 11-digit numbers during checkout on the bKash payment screen:
+
+| # | Test Wallet Number | Network / Operator | Purpose |
+| :---: | :---: | :---: | :---: |
+| **1** | **`01770618575`** | Grameenphone | Sandbox Customer Checkout |
+| **2** | **`01929918378`** | Banglalink | Sandbox Customer Checkout |
+| **3** | **`01770618576`** | Grameenphone | Sandbox Customer Checkout |
+| **4** | **`01877722345`** | Robi | Sandbox Customer Checkout |
+| **5** | **`01619777282`** | Airtel | Sandbox Customer Checkout |
+| **6** | **`01619777283`** | Airtel | Sandbox Customer Checkout |
+
+#### Live bKash Checkout Flow:
+1. Select **bKash** on [https://paymentsystem.pythonanywhere.com/checkout.html](https://paymentsystem.pythonanywhere.com/checkout.html) and click **Place order & continue to payment**.
+2. On the bKash hosted sandbox screen, enter any test wallet number from above (e.g. `01770618575`) and click **Confirm**.
+3. When prompted for OTP, enter: **`123456`** and click **Confirm**.
+4. When prompted for PIN, enter: **`12121`** and click **Confirm**.
+5. bKash automatically executes the transaction, redirects back to the live site callback, marks the order status as **Paid**, and presents the confirmed order invoice.
+
+---
+
+### Stripe Sandbox Test Cards
+
+Stripe card payments are fully operational on the live site at [paymentsystem.pythonanywhere.com](https://paymentsystem.pythonanywhere.com/) via Stripe.js Elements.
+
+| Field | Test Value | Notes |
+| --- | --- | --- |
+| **Card Number** | **`4242 4242 4242 4242`** | Standard successful test Visa card |
+| **Expiration Date** | Any valid future date (e.g., `12/30`) | Any future month/year |
+| **CVC / CVV** | Any 3 digits (e.g., `123`) | Any 3 digits accepted |
+| **Billing ZIP / Postal Code** | Any 5 digits (e.g., `12345`) | Any 5 digits accepted |
+
+#### Additional Stripe Test Cards for Scenario Testing:
+- `4000 0000 0000 0002`: Card declined (generic decline testing).
+- `4000 0000 0000 0069`: Card declined (insufficient funds testing).
+- `4000 0000 0000 0341`: 3D Secure / SCA modal authentication required.
+
+#### Live Stripe Checkout Flow:
+1. Select **Stripe** on [https://paymentsystem.pythonanywhere.com/checkout.html](https://paymentsystem.pythonanywhere.com/checkout.html) and click **Place order & continue to payment**.
+2. You will be routed to the secure Stripe card payment screen.
+3. Enter Card Number **`4242 4242 4242 4242`**, any future expiration, and any 3-digit CVC.
+4. Click **Pay**. Stripe verifies the PaymentIntent, transitions the order status to **Paid**, and redirects to the confirmation page.
 
 ---
 
@@ -26,7 +103,7 @@ The project follows clean architectural principles and industry-standard design 
 
 - **Payment Strategy Pattern (`payments/strategies.py`)**:
   - `PaymentStrategy` (Abstract Interface): Defines `initiate()`, `confirm()`, `query()`, and `verify_webhook()`.
-  - `StripePaymentStrategy` (Concrete Strategy): Handles Stripe PaymentIntents (test and live mode) with client secret handoff.
+  - `StripePaymentStrategy` (Concrete Strategy): Handles Stripe PaymentIntents (test and live mode) with client secret handoff and collision-proof idempotency hashing.
   - `BkashPaymentStrategy` (Concrete Strategy): Implements bKash Tokenized Checkout v1.2.0 (token grant, create payment, execute, status query).
   - `PaymentContext`: Decouples business logic from specific payment providers. Adding new gateways requires implementing a new strategy without modifying order workflows.
 - **Concurrency & Inventory Protection (`orders/services.py`)**:
@@ -52,61 +129,6 @@ The project follows clean architectural principles and industry-standard design 
 
 ---
 
-## Sandbox Payment Test Credentials
-
-### bKash Sandbox Test Wallets
-
-To test bKash payments, ensure `STORE_CURRENCY=BDT` is set in your `.env` file (bKash strictly requires BDT).
-
-| Field | Sandbox Test Value |
-| --- | --- |
-| **Sandbox Portal / Base URL** | `https://tokenized.sandbox.bka.sh/v1.2.0-beta` |
-| **Merchant App Key** | Set in `.env` (`BKASH_APP_KEY`) |
-| **Merchant App Secret** | Set in `.env` (`BKASH_APP_SECRET`) |
-| **Merchant Username** | Set in `.env` (`BKASH_USERNAME`) |
-| **Merchant Password** | Set in `.env` (`BKASH_PASSWORD`) |
-| **Verification Code (OTP)** | **`123456`** |
-| **PIN** | **`12121`** |
-
-#### Approved Sandbox Test Wallet Numbers
-Use any of the following 11-digit numbers during checkout on the bKash payment screen:
-
-| # | Test Wallet Number | Network / Operator | Purpose |
-| :---: | :---: | :---: | :---: |
-| **1** | **`01770618575`** | Grameenphone | Sandbox Customer Checkout |
-| **2** | **`01929918378`** | Banglalink | Sandbox Customer Checkout |
-| **3** | **`01770618576`** | Grameenphone | Sandbox Customer Checkout |
-| **4** | **`01877722345`** | Robi | Sandbox Customer Checkout |
-| **5** | **`01619777282`** | Airtel | Sandbox Customer Checkout |
-| **6** | **`01619777283`** | Airtel | Sandbox Customer Checkout |
-
-#### bKash Checkout Flow:
-1. Select **bKash** on the `/checkout.html` page and click **Place order & continue to payment**.
-2. On the bKash hosted screen, input any wallet number from the table above (e.g. `01770618575`) and click **Confirm**.
-3. Enter OTP: **`123456`** and click **Confirm**.
-4. Enter PIN: **`12121`** and click **Confirm**.
-5. bKash redirects to your callback URL, executes the payment, marks the order as **Paid**, and redirects back to the confirmation page.
-
----
-
-### Stripe Sandbox Test Cards
-
-Stripe is active when `STRIPE_SECRET_KEY` and `STRIPE_PUBLISHABLE_KEY` are provided. Supports orders in both `USD` and `BDT`.
-
-| Field | Test Value | Notes |
-| --- | --- | --- |
-| **Card Number** | **`4242 4242 4242 4242`** | Standard successful test Visa card |
-| **Expiration Date** | Any valid future date (e.g., `12/30`) | Must not be in the past |
-| **CVC / CVV** | Any 3 digits (e.g., `123`) | Any 3 digits accepted |
-| **Billing ZIP / Postal Code** | Any 5 digits (e.g., `12345`) | Any 5 digits accepted |
-
-#### Additional Stripe Test Cards for Error Testing:
-- `4000 0000 0000 0002`: Card declined (generic decline).
-- `4000 0000 0000 0069`: Card declined (insufficient funds).
-- `4000 0000 0000 0341`: 3D Secure / SCA authentication required.
-
----
-
 ## Environment Configuration (.env)
 
 Create a `.env` file in the project root by copying `.env.example`:
@@ -121,8 +143,8 @@ cp .env.example .env
 | --- | --- | --- |
 | `DJANGO_SECRET_KEY` | Cryptographic signing secret | Generate with `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
 | `DJANGO_DEBUG` | Django debug mode | `True` for dev, `False` for production |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hostnames | `localhost,127.0.0.1,0.0.0.0,.pythonanywhere.com` |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Trusted origins for HTTPS forms/POSTs | `https://your-domain.com,https://your-id.ngrok-free.app` |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated allowed hostnames | `paymentsystem.pythonanywhere.com,localhost,127.0.0.1` |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Trusted origins for HTTPS forms/POSTs | `https://paymentsystem.pythonanywhere.com` |
 | `DJANGO_DB_DIR` | SQLite directory path | Leave blank for root (dev); `/app/data` for Docker |
 | `CORS_ALLOW_ALL_ORIGINS` | CORS convenience toggle | `False` (or `True` if using a standalone dev server) |
 | `FRONTEND_URL` | Frontend origin for payment redirects | Leave blank for same-origin server hosting |
@@ -137,7 +159,7 @@ cp .env.example .env
 | `BKASH_APP_SECRET` | bKash merchant sandbox app secret | Provider credentials |
 | `BKASH_USERNAME` | bKash merchant sandbox username | Provider credentials |
 | `BKASH_PASSWORD` | bKash merchant sandbox password | Provider credentials |
-| `BKASH_CALLBACK_URL` | Public callback URL for bKash redirect | `http://localhost:8000/api/payments/webhooks/bkash/` |
+| `BKASH_CALLBACK_URL` | Public callback URL for bKash redirect | `https://paymentsystem.pythonanywhere.com/api/payments/webhooks/bkash/` |
 
 ---
 
@@ -225,39 +247,54 @@ The application includes container definitions for both the backend application 
 
 ## PythonAnywhere Production Deployment
 
-Both the Django backend and static frontend storefront run unified under the same domain.
+Both the Django backend and static frontend storefront run unified under `https://paymentsystem.pythonanywhere.com/`.
 
 1. **Clone repo on PythonAnywhere**:
    ```bash
-   git clone <repo-url> /home/<username>/Ecom_payment_system
+   git clone <repo-url> /home/paymentsystem/Ecom_payment_system
    ```
 
 2. **Setup virtual environment**:
    ```bash
    mkvirtualenv ecom-venv --python=/usr/bin/python3.12
-   cd /home/<username>/Ecom_payment_system
+   cd /home/paymentsystem/Ecom_payment_system
    pip install -r requirements.txt
    python manage.py migrate
    python manage.py seed_data
    python manage.py collectstatic --noinput
    ```
 
-3. **Create `.env`** at `/home/<username>/Ecom_payment_system/.env`:
-   - Set `DJANGO_DEBUG=False`
-   - Set `DJANGO_ALLOWED_HOSTS=<username>.pythonanywhere.com`
-   - Set `DJANGO_CSRF_TRUSTED_ORIGINS=https://<username>.pythonanywhere.com`
-   - Set `BKASH_CALLBACK_URL=https://<username>.pythonanywhere.com/api/payments/webhooks/bkash/`
-   - Leave `FRONTEND_URL=` blank (same origin)
+3. **Create `.env`** at `/home/paymentsystem/Ecom_payment_system/.env`:
+   ```env
+   DJANGO_SECRET_KEY=your-generated-secret-key
+   DJANGO_DEBUG=False
+   DJANGO_ALLOWED_HOSTS=paymentsystem.pythonanywhere.com,localhost,127.0.0.1
+   DJANGO_CSRF_TRUSTED_ORIGINS=https://paymentsystem.pythonanywhere.com
+   BKASH_CALLBACK_URL=https://paymentsystem.pythonanywhere.com/api/payments/webhooks/bkash/
+   FRONTEND_URL=
+   STORE_CURRENCY=BDT
+   ```
 
 4. **Web Tab Configuration**:
-   - **Source directory**: `/home/<username>/Ecom_payment_system`
-   - **Virtualenv**: `/home/<username>/.virtualenvs/ecom-venv`
-   - **Static files**:
-     - URL: `/static/` -> Directory: `/home/<username>/Ecom_payment_system/staticfiles`
-     - URL: `/media/` -> Directory: `/home/<username>/Ecom_payment_system/media`
-   - **WSGI file**: Configure `sys.path` and load `ecommerce.settings`.
+   - **Source directory**: `/home/paymentsystem/Ecom_payment_system`
+   - **Working directory**: `/home/paymentsystem/Ecom_payment_system`
+   - **Virtualenv**: `/home/paymentsystem/.virtualenvs/ecom-venv`
+   - **Static files mapping**:
+     - URL: `/static/` -> Directory: `/home/paymentsystem/Ecom_payment_system/staticfiles`
+     - URL: `/media/` -> Directory: `/home/paymentsystem/Ecom_payment_system/media`
+   - **WSGI configuration file**:
+     ```python
+     import os
+     import sys
+     path = '/home/paymentsystem/Ecom_payment_system'
+     if path not in sys.path:
+         sys.path.append(path)
+     os.environ['DJANGO_SETTINGS_MODULE'] = 'ecommerce.settings'
+     from django.core.wsgi import get_wsgi_application
+     application = get_wsgi_application()
+     ```
 
-5. Click **Reload**.
+5. Click **Reload paymentsystem.pythonanywhere.com**.
 
 ---
 
