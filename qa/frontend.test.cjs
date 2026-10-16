@@ -16,7 +16,7 @@ function context(files) {
         window: { location: { href: 'https://shop.example/login.html', origin: 'https://shop.example', pathname: '/login.html', search: '' }, dispatchEvent() {}, PAYMENT_PROVIDERS: {stripe: true} },
         document: { addEventListener() {}, getElementById(id) { if (!elements.has(id)) elements.set(id, { innerHTML: '' }); return elements.get(id); } },
     });
-    for (const file of files) vm.runInContext(fs.readFileSync(path.join(__dirname, '../vercel_frontend/js', file), 'utf8'), ctx);
+    for (const file of files) vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/js', file), 'utf8'), ctx);
     return ctx;
 }
 function run(ctx, source) { return vm.runInContext(source, ctx); }
@@ -80,9 +80,9 @@ test('configuration query cannot redirect credentials', async () => {
     ctx.window.location.search = '?api=https://evil.example';
     ctx.localStorage.setItem('ledgerco_api_base', 'https://evil.example');
     ctx.fetch = async () => ({ok: true, json: async () => ({currency: 'BDT', providers: {bkash: true}})});
-    run(ctx, fs.readFileSync(path.join(__dirname, '../vercel_frontend/js/config.js'), 'utf8'));
+    run(ctx, fs.readFileSync(path.join(__dirname, '../static/js/config.js'), 'utf8'));
     await ctx.window.StoreReady;
-    assert.equal(ctx.window.API_BASE_URL, 'http://localhost:8000');
+    assert.equal(ctx.window.API_BASE_URL, 'https://shop.example');
     assert.equal(ctx.window.STORE_CURRENCY, 'BDT');
 });
 test('pending Stripe confirmation is never shown as success', async () => {

@@ -52,7 +52,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY", "django-insecure-dev-key-change-in-product
 DEBUG = env_bool("DJANGO_DEBUG", True)
 
 ALLOWED_HOSTS = [
-    h.strip() for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0").split(",") if h.strip()
+    h.strip()
+    for h in env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0,.pythonanywhere.com").split(",")
+    if h.strip()
 ]
 
 # ngrok / external origins configuration driven by .env
@@ -99,7 +101,7 @@ ROOT_URLCONF = "ecommerce.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -146,8 +148,6 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-
-
 # ---------------------------------------------------------------------------
 # Internationalization
 # ---------------------------------------------------------------------------
@@ -161,6 +161,7 @@ USE_TZ = True
 # Static & media
 # ---------------------------------------------------------------------------
 STATIC_URL = "/static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
@@ -170,7 +171,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # ---------------------------------------------------------------------------
-# CORS (frontend on Vercel talking to backend over ngrok)
+# CORS
 # ---------------------------------------------------------------------------
 from corsheaders.defaults import default_headers
 
@@ -248,7 +249,8 @@ BKASH_USERNAME = env("BKASH_USERNAME", "")
 BKASH_PASSWORD = env("BKASH_PASSWORD", "")
 BKASH_CALLBACK_URL = env("BKASH_CALLBACK_URL", "http://localhost:8000/api/payments/webhooks/bkash/")
 
-FRONTEND_URL = env("FRONTEND_URL", "http://localhost:8080").rstrip("/")
+# Defaults to empty string (same-origin redirect on PythonAnywhere / Django server)
+FRONTEND_URL = env("FRONTEND_URL", "").rstrip("/")
 
 
 # ---------------------------------------------------------------------------

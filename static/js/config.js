@@ -1,13 +1,11 @@
 // Ledger & Co. — API base URL configuration.
 //
-// IMPORTANT: change the default below to your deployed/ngrok Django backend
-// URL before (or after) deploying to Vercel. No trailing slash.
-//
-// Edit the trusted default for deployment. Query-string overrides are disabled.
+// Configured for same-origin Django hosting (PythonAnywhere / local runserver).
+// Automatically uses the current origin so all /api/ calls route to the same Django server.
 (function () {
-    // Configure this trusted origin when deploying. URL query parameters must never
-    // choose where the browser sends passwords and authentication tokens.
-    const DEFAULT_API_BASE_URL = "http://localhost:8000";
+    const DEFAULT_API_BASE_URL = (window.location && window.location.origin && window.location.origin !== "null")
+        ? window.location.origin
+        : "http://localhost:8000";
     window.API_BASE_URL = DEFAULT_API_BASE_URL;
     localStorage.removeItem('ledgerco_api_base');
     window.STORE_CURRENCY = 'USD';

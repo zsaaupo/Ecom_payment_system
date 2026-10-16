@@ -32,7 +32,7 @@ function escapeHtml(str) {
 function safeReturnPath(value) {
     try {
         const url = new URL(value || 'index.html', window.location.href);
-        if (url.origin === window.location.origin && /\/[^/]*\.html$/.test(url.pathname)) {
+        if (url.origin === window.location.origin && (url.pathname === '/' || /\/[^/]*\.html$/.test(url.pathname))) {
             return url.pathname + url.search + url.hash;
         }
     } catch { /* use the catalog for invalid destinations */ }
