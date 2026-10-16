@@ -212,8 +212,10 @@ class CheckoutRegressionTests(TestCase):
 
     @patch.object(BkashPaymentStrategy, '_grant_token')
     def test_bkash_rejects_usd_without_contacting_provider(self, grant):
+        order = self.order()
+        order.currency = 'USD'
         with self.assertRaises(PaymentProviderError):
-            BkashPaymentStrategy().initiate(self.order())
+            BkashPaymentStrategy().initiate(order)
         grant.assert_not_called()
 
     def test_other_user_cannot_access_order_or_payment(self):

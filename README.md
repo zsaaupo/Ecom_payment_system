@@ -103,7 +103,7 @@ The project follows clean architectural principles and industry-standard design 
 
 - **Payment Strategy Pattern (`payments/strategies.py`)**:
   - `PaymentStrategy` (Abstract Interface): Defines `initiate()`, `confirm()`, `query()`, and `verify_webhook()`.
-  - `StripePaymentStrategy` (Concrete Strategy): Handles Stripe PaymentIntents (test and live mode) with client secret handoff and collision-proof idempotency hashing.
+  - `StripePaymentStrategy` (Concrete Strategy): Handles Stripe PaymentIntents (test and live mode) with client secret handoff and order-level idempotency protection.
   - `BkashPaymentStrategy` (Concrete Strategy): Implements bKash Tokenized Checkout v1.2.0 (token grant, create payment, execute, status query).
   - `PaymentContext`: Decouples business logic from specific payment providers. Adding new gateways requires implementing a new strategy without modifying order workflows.
 - **Concurrency & Inventory Protection (`orders/services.py`)**:
